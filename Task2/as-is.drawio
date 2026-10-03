@@ -1,0 +1,330 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="HDVinB9CQ1kGPHvIVTLH">
+    <mxGraphModel dx="4094" dy="2206" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <UserObject label="" plantUmlData="{&#xa;  &quot;data&quot;: &quot;@startuml\n!theme plain\nleft to right direction\n\nskinparam packageStyle rectangle\nskinparam componentStyle rectangle\nskinparam shadowing false\nskinparam wrapWidth 200\nskinparam maxMessageSize 200\n\nskinparam rectangle {\n  BorderColor #555555\n  BackgroundColor #FFFFFF\n}\nskinparam component {\n  BorderColor #555555\n  BackgroundColor #F8F8F8\n}\nskinparam database {\n  BorderColor #555555\n  BackgroundColor #FFF4CC\n}\nskinparam queue {\n  BorderColor #555555\n  BackgroundColor #EAF4FF\n}\n\nactor \&quot;Клиент\&quot; as Customer\nactor \&quot;Оператор\\nподдержки\&quot; as Support\nactor \&quot;Бизнес-\\nпользователи\&quot; as BusinessUsers\n\ncloud \&quot;Маркетплейсы\&quot; as Marketplaces\ncloud \&quot;Платёжные\\nпровайдеры\&quot; as PaymentProviders\ncloud \&quot;Службы\\nдоставки\&quot; as DeliveryPartners\ncloud \&quot;Внутренние\\nBI / отчёты\&quot; as BI\n\nrectangle \&quot;RetailCore AS-IS (фактическое состояние)\&quot; as RetailCore {\n\n  component \&quot;Интернет-магазин\\nи мобильные каналы\&quot; as Channels\n\n  package \&quot;Java-монолит\\nцентральный контур обработки заказов\&quot; as JavaMonolith {\n    component \&quot;Checkout / Order API\&quot; as OrderApi\n    component \&quot;Order Processing\&quot; as Processing\n    component \&quot;Pricing &amp; Promo Logic\&quot; as Pricing\n    component \&quot;Status Management\&quot; as Statuses\n    component \&quot;Payment Orchestration\&quot; as PaymentOrchestration\n    component \&quot;Delivery Routing\&quot; as DeliveryRouting\n  }\n\n  database \&quot;Oracle\\nоперационная БД + бизнес-логика + интеграционный слой\&quot; as Oracle\n\n  package \&quot;Вспомогательные сервисы\&quot; as AuxServices {\n    component \&quot;.NET integration service\\nпартнёрские интеграции\&quot; as DotNet\n    component \&quot;Python analytics jobs\\nаналитические выгрузки\&quot; as PyAnalytics\n  }\n\n  queue \&quot;Async / batch exchange\\nочереди, задания, выгрузки\&quot; as AsyncLayer\n\n  component \&quot;Admin / Support tools\\nручные проверки и корректировки\&quot; as AdminTools\n}\n\nCustomer --&gt; Channels : оформление заказа,\\nпросмотр статуса\nChannels --&gt; OrderApi : create/update order\\nсинхронный вызов\n\nMarketplaces --&gt; OrderApi : заказы,\\nобновления,\\nстатусы\n\nOrderApi --&gt; Pricing : расчёт цены,\\nскидок,\\nпромо\nOrderApi --&gt; Processing : создание и обработка заказа\n\nProcessing --&gt; PaymentOrchestration : инициировать оплату\nProcessing --&gt; DeliveryRouting : выбрать доставку\n\nPaymentOrchestration --&gt; PaymentProviders : синхронный вызов\\nсоздания платёжной сессии\nDeliveryRouting --&gt; DeliveryPartners : синхронное / смешанное\\nрезервирование доставки\n\nPricing --&gt; Oracle : правила,\\nкоэффициенты,\\nlegacy promo logic\nProcessing --&gt; Oracle : заказ,\\nрезерв,\\nслужебные таблицы\nStatuses --&gt; Oracle : статусы,\\nистория,\\nтехнические состояния\nPaymentOrchestration --&gt; Oracle : payment_session_id,\\nтехнические атрибуты\nDeliveryRouting --&gt; Oracle : правила маршрутизации,\\nпартнёры,\\nretry-состояния\n\nProcessing --&gt; AsyncLayer : события,\\nзадания,\\nвыгрузки\nAsyncLayer --&gt; DotNet : обмен для части\\nпартнёрских сценариев\nDotNet --&gt; Oracle : staging/shared tables\nDotNet --&gt; DeliveryPartners : партнёрские\\nлогистические интеграции\n\nPyAnalytics --&gt; Oracle : прямые выборки,\\nвитрины,\\nдолгие отчёты\nAsyncLayer --&gt; PyAnalytics : batch/async данные\nBI --&gt; Oracle : отчётные запросы\nBusinessUsers --&gt; BI : управленческие отчёты\n\nSupport --&gt; AdminTools : разбор обращений,\\nручные действия\nAdminTools --&gt; Statuses : ручная проверка /\\nкорректировка статусов\nAdminTools --&gt; Oracle : просмотр технических\\nатрибутов заказа\n\nnote right of PaymentProviders\n  Внешняя зависимость.\n  Синхронные вызовы в критичном checkout.\n  Нет правил деградации.\nend note\n\nnote right of DeliveryPartners\n  Внешняя зависимость.\n  Смешанные протоколы (REST, очереди, БД, batch).\n  Проблемы дедупликации и идемпотентности.\nend note\n\nnote bottom of Oracle\n  **Критический узел**:\n  - содержит бизнес-логику (пакеты, процедуры);\n  - используется как интеграционный слой (staging/shared tables);\n  - прямые SQL-запросы из аналитики;\n  - длинные транзакции;\n  - ресурсы близки к пределу.\nend note\n\nnote bottom of JavaMonolith\n  **Смешение ответственности**:\n  - цена, промо, статусы, логистика, платежи;\n  - исторические ветвления по каналам и регионам;\n  - fallback-механизмы с неполной эквивалентностью;\n  - часть логики в коде, часть в Oracle, часть в конфигах.\nend note\n\nnote bottom of Statuses\n  **Фрагментация статусов**:\n  - переходы в разных модулях и batch;\n  - ручные корректировки через AdminTools;\n  - разрыв между клиентским и внутренним статусом.\nend note\n\nnote bottom of PyAnalytics\n  **Аналитика**:\n  - нет единой канонической модели заказа;\n  -多个 источников: SQL, staging, API, batch, CSV;\n  - проблемы качества данных и lineage.\nend note\n\n@enduml&quot;,&#xa;  &quot;config&quot;: null&#xa;}" id="1Lf__q6R_X952Ri9GaN6-445">
+          <mxCell connectable="0" parent="1" style="group;editIcon=1;lockedGroup=0;groupPadding=5;aspect=fixed;" vertex="1">
+            <mxGeometry height="2200" width="3300" x="20" y="20" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="RetailCore AS-IS (фактическое состояние)" plantUmlId="c_0" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=5;fillColor=#FFFFFF;strokeColor=#555555;verticalAlign=top;align=center;spacingTop=2;fontSize=14;fontStyle=1;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="RetailCore AS-IS (фактическое состояние)" id="1Lf__q6R_X952Ri9GaN6-446">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="rounded=1;absoluteArcSize=1;arcSize=5;fillColor=#FFFFFF;strokeColor=#555555;verticalAlign=top;align=center;spacingTop=2;fontSize=14;fontStyle=1;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="1015.6794425087108" width="2383.815789473684" x="360.39473684210526" y="406.2717770034843" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Интернет-магазин&#xa;и мобильные каналы" plantUmlId="n_1" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Интернет-магазин&#xa;и мобильные каналы" id="1Lf__q6R_X952Ri9GaN6-447">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-446" style="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.80487804878052" width="187.79605263157896" x="69.47368421052632" y="247.21254355400703" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Oracle&#xa;операционная БД + бизнес-логика + интеграционный слой" plantUmlId="n_2" plantUmlBaseStyle="shape=cylinder3;size=10;boundedLbl=1;backgroundOutline=1;fillColor=#FFF4CC;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Oracle&#xa;операционная БД + бизнес-логика + интеграционный слой" id="1Lf__q6R_X952Ri9GaN6-448">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-446" style="shape=cylinder3;size=10;boundedLbl=1;backgroundOutline=1;fillColor=#FFF4CC;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="176.30662020905925" width="447.2368421052632" x="1920.296052631579" y="461.84668989547043" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Async / batch exchange&#xa;очереди, задания, выгрузки" plantUmlId="n_3" plantUmlBaseStyle="shape=cylinder3;direction=east;size=5;fillColor=#EAF4FF;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Async / batch exchange&#xa;очереди, задания, выгрузки" id="1Lf__q6R_X952Ri9GaN6-449">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-446" style="shape=cylinder3;direction=east;size=5;fillColor=#EAF4FF;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="176.30662020905925" width="225.78947368421052" x="1096.3815789473683" y="461.84668989547043" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Admin / Support tools&#xa;ручные проверки и корректировки" plantUmlId="n_4" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Admin / Support tools&#xa;ручные проверки и корректировки" id="1Lf__q6R_X952Ri9GaN6-450">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-446" style="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.80487804878052" width="294.17763157894734" x="16.282894736842106" y="664.9825783972127" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Java-монолит&#xa;центральный контур обработки заказов" plantUmlId="c_5" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=5;fillColor=#FFFFFF;strokeColor=#555555;verticalAlign=top;align=center;spacingTop=2;fontSize=14;fontStyle=1;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Java-монолит&#xa;центральный контур обработки заказов" id="1Lf__q6R_X952Ri9GaN6-451">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-446" style="rounded=1;absoluteArcSize=1;arcSize=5;fillColor=#FFFFFF;strokeColor=#555555;verticalAlign=top;align=center;spacingTop=2;fontSize=14;fontStyle=1;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="839.3728222996517" width="709.9342105263158" x="348.45394736842104" y="130.31358885017426" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Checkout / Order API" plantUmlId="n_6" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Checkout / Order API" id="1Lf__q6R_X952Ri9GaN6-452">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-451" style="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.8048780487805" width="193.2236842105263" x="9.772894736842106" y="163.4148780487805" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Order Processing" plantUmlId="n_7" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Order Processing" id="1Lf__q6R_X952Ri9GaN6-453">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-451" style="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.8048780487805" width="171.51315789473685" x="247.4973684210526" y="123.4148780487805" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Pricing &amp; Promo Logic" plantUmlId="n_8" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Pricing &amp; Promo Logic" id="1Lf__q6R_X952Ri9GaN6-454">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-451" style="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.8048780487805" width="201.9078947368421" x="247.5" y="605.5749128919861" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Status Management" plantUmlId="n_9" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Status Management" id="1Lf__q6R_X952Ri9GaN6-455">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-451" style="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.8048780487805" width="180.19736842105263" x="22.79605263157895" y="605.5749128919861" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Payment Orchestration" plantUmlId="n_10" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Payment Orchestration" id="1Lf__q6R_X952Ri9GaN6-456">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-451" style="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.8048780487805" width="206.25" x="481.1513157894737" y="143.7248780487805" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Delivery Routing" plantUmlId="n_11" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Delivery Routing" id="1Lf__q6R_X952Ri9GaN6-457">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-451" style="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.8048780487805" width="159.57236842105263" x="510.74013157894734" y="605.5749128919861" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="расчёт цены,&#xa;скидок,&#xa;промо" plantUmlId="e_28" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="расчёт цены,&#xa;скидок,&#xa;промо" id="1Lf__q6R_X952Ri9GaN6-474">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-451" source="1Lf__q6R_X952Ri9GaN6-452" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-454">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="создание и обработка заказа" plantUmlId="e_29" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="создание и обработка заказа" id="1Lf__q6R_X952Ri9GaN6-475">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-451" source="1Lf__q6R_X952Ri9GaN6-452" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-453">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="инициировать оплату" plantUmlId="e_30" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="инициировать оплату" id="1Lf__q6R_X952Ri9GaN6-476">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-451" source="1Lf__q6R_X952Ri9GaN6-453" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-456">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="выбрать доставку" plantUmlId="e_31" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="выбрать доставку" id="1Lf__q6R_X952Ri9GaN6-477">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-451" source="1Lf__q6R_X952Ri9GaN6-453" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-457">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Вспомогательные сервисы" plantUmlId="c_12" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=5;fillColor=#FFFFFF;strokeColor=#555555;verticalAlign=top;align=center;spacingTop=2;fontSize=14;fontStyle=1;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Вспомогательные сервисы" id="1Lf__q6R_X952Ri9GaN6-458">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-446" style="rounded=1;absoluteArcSize=1;arcSize=5;fillColor=#FFFFFF;strokeColor=#555555;verticalAlign=top;align=center;spacingTop=2;fontSize=14;fontStyle=1;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="364.11149825783974" width="522.1381578947369" x="1360.1644736842104" y="367.9442508710802" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label=".NET integration service&#xa;партнёрские интеграции" plantUmlId="n_13" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue=".NET integration service&#xa;партнёрские интеграции" id="1Lf__q6R_X952Ri9GaN6-459">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-458" style="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.80487804878052" width="225.78947368421052" x="16.282894736842106" y="130.31358885017426" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Python analytics jobs&#xa;аналитические выгрузки" plantUmlId="n_14" plantUmlBaseStyle="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Python analytics jobs&#xa;аналитические выгрузки" id="1Lf__q6R_X952Ri9GaN6-460">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-458" style="rounded=1;absoluteArcSize=1;arcSize=6;fillColor=#F8F8F8;strokeColor=#555555;fontSize=14;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.80487804878052" width="225.78947368421052" x="280.0657894736842" y="130.31358885017426" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="create/update order&#xa;синхронный вызов" plantUmlId="e_26" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="create/update order&#xa;синхронный вызов" id="1Lf__q6R_X952Ri9GaN6-472">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-446" source="1Lf__q6R_X952Ri9GaN6-447" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-452">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="правила,&#xa;коэффициенты,&#xa;legacy promo logic" plantUmlId="e_34" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="правила,&#xa;коэффициенты,&#xa;legacy promo logic" id="1Lf__q6R_X952Ri9GaN6-480">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-446" source="1Lf__q6R_X952Ri9GaN6-454" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-448">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="заказ,&#xa;резерв,&#xa;служебные таблицы" plantUmlId="e_35" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="заказ,&#xa;резерв,&#xa;служебные таблицы" id="1Lf__q6R_X952Ri9GaN6-481">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-446" source="1Lf__q6R_X952Ri9GaN6-453" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-448">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="статусы,&#xa;история,&#xa;технические состояния" plantUmlId="e_36" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="статусы,&#xa;история,&#xa;технические состояния" id="1Lf__q6R_X952Ri9GaN6-482">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-446" source="1Lf__q6R_X952Ri9GaN6-455" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-448">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="payment_session_id,&#xa;технические атрибуты" plantUmlId="e_37" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="payment_session_id,&#xa;технические атрибуты" id="1Lf__q6R_X952Ri9GaN6-483">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-446" source="1Lf__q6R_X952Ri9GaN6-456" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-448">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="правила маршрутизации,&#xa;партнёры,&#xa;retry-состояния" plantUmlId="e_38" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="правила маршрутизации,&#xa;партнёры,&#xa;retry-состояния" id="1Lf__q6R_X952Ri9GaN6-484">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-446" source="1Lf__q6R_X952Ri9GaN6-457" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-448">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="staging/shared tables" plantUmlId="e_41" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="staging/shared tables" id="1Lf__q6R_X952Ri9GaN6-487">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-446" source="1Lf__q6R_X952Ri9GaN6-459" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-448">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="прямые выборки,&#xa;витрины,&#xa;долгие отчёты" plantUmlId="e_43" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="прямые выборки,&#xa;витрины,&#xa;долгие отчёты" id="1Lf__q6R_X952Ri9GaN6-489">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-446" source="1Lf__q6R_X952Ri9GaN6-460" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-448">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="просмотр технических&#xa;атрибутов заказа" plantUmlId="e_49" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="просмотр технических&#xa;атрибутов заказа" id="1Lf__q6R_X952Ri9GaN6-495">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-446" source="1Lf__q6R_X952Ri9GaN6-450" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-448">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="события,&#xa;задания,&#xa;выгрузки" plantUmlId="e_39" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="события,&#xa;задания,&#xa;выгрузки" id="1Lf__q6R_X952Ri9GaN6-485">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-446" source="1Lf__q6R_X952Ri9GaN6-453" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-449">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="обмен для части&#xa;партнёрских сценариев" plantUmlId="e_40" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="обмен для части&#xa;партнёрских сценариев" id="1Lf__q6R_X952Ri9GaN6-486">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-446" source="1Lf__q6R_X952Ri9GaN6-449" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-459">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="batch/async данные" plantUmlId="e_44" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="batch/async данные" id="1Lf__q6R_X952Ri9GaN6-490">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-446" source="1Lf__q6R_X952Ri9GaN6-449" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-460">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="ручная проверка /&#xa;корректировка статусов" plantUmlId="e_48" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="ручная проверка /&#xa;корректировка статусов" id="1Lf__q6R_X952Ri9GaN6-494">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-446" source="1Lf__q6R_X952Ri9GaN6-450" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-455">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="n_15" plantUmlBaseStyle="shape=umlActor;html=1;fillColor=#FFFFFF;strokeColor=#000000;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="" id="1Lf__q6R_X952Ri9GaN6-461">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=umlActor;html=1;fillColor=#FFFFFF;strokeColor=#000000;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="206.9686411149826" width="43.421052631578945" x="61.875" y="38.32752613240417" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Клиент" plantUmlId="cap_16" plantUmlBaseStyle="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=14;whiteSpace=wrap;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Клиент" id="1Lf__q6R_X952Ri9GaN6-462">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=14;whiteSpace=wrap;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="84.32055749128918" width="57.5328947368421" x="54.81907894736842" y="245.29616724738676" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="n_17" plantUmlBaseStyle="shape=umlActor;html=1;fillColor=#FFFFFF;strokeColor=#000000;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="" id="1Lf__q6R_X952Ri9GaN6-463">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=umlActor;html=1;fillColor=#FFFFFF;strokeColor=#000000;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="206.9686411149826" width="43.421052631578945" x="61.875" y="559.5818815331011" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Оператор&#xa;поддержки" plantUmlId="cap_18" plantUmlBaseStyle="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=14;whiteSpace=wrap;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Оператор&#xa;поддержки" id="1Lf__q6R_X952Ri9GaN6-464">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=14;whiteSpace=wrap;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="84.32055749128918" width="82.5" x="42.33552631578947" y="766.5505226480836" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="n_19" plantUmlBaseStyle="shape=umlActor;html=1;fillColor=#FFFFFF;strokeColor=#000000;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="" id="1Lf__q6R_X952Ri9GaN6-465">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=umlActor;html=1;fillColor=#FFFFFF;strokeColor=#000000;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="206.9686411149826" width="43.421052631578945" x="61.875" y="1080.8362369337979" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Бизнес-&#xa;пользователи" plantUmlId="cap_20" plantUmlBaseStyle="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=14;whiteSpace=wrap;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Бизнес-&#xa;пользователи" id="1Lf__q6R_X952Ri9GaN6-466">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=top;fontSize=14;whiteSpace=wrap;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="84.32055749128918" width="108.55263157894737" x="29.309210526315788" y="1287.8048780487802" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Маркетплейсы" plantUmlId="n_21" plantUmlBaseStyle="shape=cloud;fillColor=#FFFFFF;strokeColor=#000000;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Маркетплейсы" id="1Lf__q6R_X952Ri9GaN6-467">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=cloud;fillColor=#FFFFFF;strokeColor=#000000;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.8048780487805" width="145.46052631578948" x="10.855263157894736" y="1602.0905923344947" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Платёжные&#xa;провайдеры" plantUmlId="n_22" plantUmlBaseStyle="shape=cloud;fillColor=#FFFFFF;strokeColor=#000000;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Платёжные&#xa;провайдеры" id="1Lf__q6R_X952Ri9GaN6-468">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=cloud;fillColor=#FFFFFF;strokeColor=#000000;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.8048780487805" width="128.0921052631579" x="2782.203947368421" y="611.3240418118467" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Службы&#xa;доставки" plantUmlId="n_23" plantUmlBaseStyle="shape=cloud;fillColor=#FFFFFF;strokeColor=#000000;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Службы&#xa;доставки" id="1Lf__q6R_X952Ri9GaN6-469">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=cloud;fillColor=#FFFFFF;strokeColor=#000000;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.8048780487805" width="110.72368421052632" x="2790.8881578947367" y="1029.094076655052" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Внутренние&#xa;BI / отчёты" plantUmlId="n_24" plantUmlBaseStyle="shape=cloud;fillColor=#FFFFFF;strokeColor=#000000;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Внутренние&#xa;BI / отчёты" id="1Lf__q6R_X952Ri9GaN6-470">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=cloud;fillColor=#FFFFFF;strokeColor=#000000;whiteSpace=wrap;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="187.8048780487805" width="128.0921052631579" x="194.30921052631578" y="820.2090592334494" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="оформление заказа,&#xa;просмотр статуса" plantUmlId="e_25" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="оформление заказа,&#xa;просмотр статуса" id="1Lf__q6R_X952Ri9GaN6-471">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-445" source="1Lf__q6R_X952Ri9GaN6-461" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-447">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="заказы,&#xa;обновления,&#xa;статусы" plantUmlId="e_27" plantUmlBaseStyle="strokeColor=#181818;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="заказы,&#xa;обновления,&#xa;статусы" id="1Lf__q6R_X952Ri9GaN6-473">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-445" source="1Lf__q6R_X952Ri9GaN6-467" style="strokeColor=#181818;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-452">
+            <mxGeometry relative="1" as="geometry">
+              <Array as="points">
+                <mxPoint x="2940.690789473684" y="1697.9094076655053" />
+                <mxPoint x="2940.690789473684" y="820.2090592334494" />
+              </Array>
+            </mxGeometry>
+          </mxCell>
+        </UserObject>
+        <UserObject label="синхронный вызов&#xa;создания платёжной сессии" plantUmlId="e_32" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="синхронный вызов&#xa;создания платёжной сессии" id="1Lf__q6R_X952Ri9GaN6-478">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-445" source="1Lf__q6R_X952Ri9GaN6-456" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-468">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="синхронное / смешанное&#xa;резервирование доставки" plantUmlId="e_33" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="синхронное / смешанное&#xa;резервирование доставки" id="1Lf__q6R_X952Ri9GaN6-479">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-445" source="1Lf__q6R_X952Ri9GaN6-457" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-469">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="партнёрские&#xa;логистические интеграции" plantUmlId="e_42" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="партнёрские&#xa;логистические интеграции" id="1Lf__q6R_X952Ri9GaN6-488">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-445" source="1Lf__q6R_X952Ri9GaN6-459" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-469">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="отчётные запросы" plantUmlId="e_45" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="отчётные запросы" id="1Lf__q6R_X952Ri9GaN6-491">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-445" source="1Lf__q6R_X952Ri9GaN6-470" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-448">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="управленческие отчёты" plantUmlId="e_46" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="управленческие отчёты" id="1Lf__q6R_X952Ri9GaN6-492">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-445" source="1Lf__q6R_X952Ri9GaN6-465" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-470">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="разбор обращений,&#xa;ручные действия" plantUmlId="e_47" plantUmlBaseStyle="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" plantUmlBaseValue="разбор обращений,&#xa;ручные действия" id="1Lf__q6R_X952Ri9GaN6-493">
+          <mxCell edge="1" parent="1Lf__q6R_X952Ri9GaN6-445" source="1Lf__q6R_X952Ri9GaN6-463" style="strokeColor=#000000;fontColor=#000000;fontSize=12;html=1;labelBackgroundColor=#FFFFFF;endArrow=classicThin;endFill=1;strokeWidth=1;fontFamily=Verdana;curved=0;rounded=0;endSize=6;sourcePerimeterSpacing=0;targetPerimeterSpacing=0;" target="1Lf__q6R_X952Ri9GaN6-450">
+            <mxGeometry relative="1" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Внешняя зависимость.&#xa;Синхронные вызовы в критичном checkout.&#xa;Нет правил деградации." plantUmlId="note_50" plantUmlBaseStyle="shape=note;size=10;fillColor=#FFFFFF;strokeColor=#000000;fontSize=13;whiteSpace=wrap;align=left;spacingLeft=4;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Внешняя зависимость.&#xa;Синхронные вызовы в критичном checkout.&#xa;Нет правил деградации." id="1Lf__q6R_X952Ri9GaN6-496">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=note;size=10;fillColor=#FFFFFF;strokeColor=#000000;fontSize=13;whiteSpace=wrap;align=left;spacingLeft=4;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="214.63414634146335" width="308.2894736842105" x="2948.2894736842104" y="597.9094076655052" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="noteptr_51" plantUmlBaseStyle="shape=triangle;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1;shadow=0;fontColor=#000000;fontFamily=Verdana;direction=west;" plantUmlBaseValue="" id="1Lf__q6R_X952Ri9GaN6-497">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=triangle;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1;shadow=0;fontColor=#000000;fontFamily=Verdana;direction=west;" vertex="1">
+            <mxGeometry height="30.662020905923345" width="39.078947368421055" x="2910.2960526315787" y="689.8954703832753" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="Внешняя зависимость.&#xa;Смешанные протоколы (REST, очереди, БД, batch).&#xa;Проблемы дедупликации и идемпотентности." plantUmlId="note_52" plantUmlBaseStyle="shape=note;size=10;fillColor=#FFFFFF;strokeColor=#000000;fontSize=13;whiteSpace=wrap;align=left;spacingLeft=4;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" plantUmlBaseValue="Внешняя зависимость.&#xa;Смешанные протоколы (REST, очереди, БД, batch).&#xa;Проблемы дедупликации и идемпотентности." id="1Lf__q6R_X952Ri9GaN6-498">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=note;size=10;fillColor=#FFFFFF;strokeColor=#000000;fontSize=13;whiteSpace=wrap;align=left;spacingLeft=4;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;" vertex="1">
+            <mxGeometry height="214.63414634146335" width="349.5394736842105" x="2939.6052631578946" y="1015.6794425087108" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="noteptr_53" plantUmlBaseStyle="shape=triangle;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1;shadow=0;fontColor=#000000;fontFamily=Verdana;direction=west;" plantUmlBaseValue="" id="1Lf__q6R_X952Ri9GaN6-499">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=triangle;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1;shadow=0;fontColor=#000000;fontFamily=Verdana;direction=west;" vertex="1">
+            <mxGeometry height="30.662020905923345" width="39.078947368421055" x="2901.6118421052633" y="1107.6655052264807" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;Критический узел&lt;/b&gt;:&lt;br&gt;- содержит бизнес-логику (пакеты, процедуры);&lt;br&gt;- используется как интеграционный слой (staging/shared tables);&lt;br&gt;- прямые SQL-запросы из аналитики;&lt;br&gt;- длинные транзакции;&lt;br&gt;- ресурсы близки к пределу." plantUmlId="note_54" plantUmlBaseStyle="shape=note;size=10;fillColor=#FFFFFF;strokeColor=#000000;fontSize=13;whiteSpace=wrap;align=left;spacingLeft=4;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;html=1;" plantUmlBaseValue="&lt;b&gt;Критический узел&lt;/b&gt;:&lt;br&gt;- содержит бизнес-логику (пакеты, процедуры);&lt;br&gt;- используется как интеграционный слой (staging/shared tables);&lt;br&gt;- прямые SQL-запросы из аналитики;&lt;br&gt;- длинные транзакции;&lt;br&gt;- ресурсы близки к пределу." id="1Lf__q6R_X952Ri9GaN6-500">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=note;size=10;fillColor=#FFFFFF;strokeColor=#000000;fontSize=13;whiteSpace=wrap;align=left;spacingLeft=4;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;html=1;" vertex="1">
+            <mxGeometry height="390.94076655052265" width="472.20394736842104" x="2268.75" y="1180.4878048780486" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="noteptr_55" plantUmlBaseStyle="shape=triangle;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1;shadow=0;fontColor=#000000;fontFamily=Verdana;direction=north;" plantUmlBaseValue="" id="1Lf__q6R_X952Ri9GaN6-501">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=triangle;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1;shadow=0;fontColor=#000000;fontFamily=Verdana;direction=north;" vertex="1">
+            <mxGeometry height="139.89547038327527" width="8.68421052631579" x="2499.967105263158" y="1044.425087108014" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;Смешение ответственности&lt;/b&gt;:&lt;br&gt;- цена, промо, статусы, логистика, платежи;&lt;br&gt;- исторические ветвления по каналам и регионам;&lt;br&gt;- fallback-механизмы с неполной эквивалентностью;&lt;br&gt;- часть логики в коде, часть в Oracle, часть в конфигах." plantUmlId="note_56" plantUmlBaseStyle="shape=note;size=10;fillColor=#FFFFFF;strokeColor=#000000;fontSize=13;whiteSpace=wrap;align=left;spacingLeft=4;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;html=1;" plantUmlBaseValue="&lt;b&gt;Смешение ответственности&lt;/b&gt;:&lt;br&gt;- цена, промо, статусы, логистика, платежи;&lt;br&gt;- исторические ветвления по каналам и регионам;&lt;br&gt;- fallback-механизмы с неполной эквивалентностью;&lt;br&gt;- часть логики в коде, часть в Oracle, часть в конфигах." id="1Lf__q6R_X952Ri9GaN6-502">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=note;size=10;fillColor=#FFFFFF;strokeColor=#000000;fontSize=13;whiteSpace=wrap;align=left;spacingLeft=4;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;html=1;" vertex="1">
+            <mxGeometry height="333.4494773519163" width="413.5855263157895" x="857.5657894736842" y="1510.104529616725" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="noteptr_57" plantUmlBaseStyle="shape=triangle;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1;shadow=0;fontColor=#000000;fontFamily=Verdana;direction=north;" plantUmlBaseValue="" id="1Lf__q6R_X952Ri9GaN6-503">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=triangle;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1;shadow=0;fontColor=#000000;fontFamily=Verdana;direction=north;" vertex="1">
+            <mxGeometry height="137.97909407665506" width="8.68421052631579" x="1059.4736842105262" y="1375.95818815331" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;Фрагментация статусов&lt;/b&gt;:&lt;br&gt;- переходы в разных модулях и batch;&lt;br&gt;- ручные корректировки через AdminTools;&lt;br&gt;- разрыв между клиентским и внутренним статусом." plantUmlId="note_58" plantUmlBaseStyle="shape=note;size=10;fillColor=#FFFFFF;strokeColor=#000000;fontSize=13;whiteSpace=wrap;align=left;spacingLeft=4;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;html=1;" plantUmlBaseValue="&lt;b&gt;Фрагментация статусов&lt;/b&gt;:&lt;br&gt;- переходы в разных модулях и batch;&lt;br&gt;- ручные корректировки через AdminTools;&lt;br&gt;- разрыв между клиентским и внутренним статусом." id="1Lf__q6R_X952Ri9GaN6-504">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=note;size=10;fillColor=#FFFFFF;strokeColor=#000000;fontSize=13;whiteSpace=wrap;align=left;spacingLeft=4;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;html=1;" vertex="1">
+            <mxGeometry height="272.1254355400697" width="375.5921052631579" x="633.9473684210526" y="1889.5470383275263" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="noteptr_59" plantUmlBaseStyle="shape=triangle;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1;shadow=0;fontColor=#000000;fontFamily=Verdana;direction=north;" plantUmlBaseValue="" id="1Lf__q6R_X952Ri9GaN6-505">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=triangle;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1;shadow=0;fontColor=#000000;fontFamily=Verdana;direction=north;" vertex="1">
+            <mxGeometry height="563.4146341463414" width="8.68421052631579" x="817.4013157894736" y="1329.965156794425" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="&lt;b&gt;Аналитика&lt;/b&gt;:&lt;br&gt;- нет единой канонической модели заказа;&lt;br&gt;-多个 источников: SQL, staging, API, batch, CSV;&lt;br&gt;- проблемы качества данных и lineage." plantUmlId="note_60" plantUmlBaseStyle="shape=note;size=10;fillColor=#FFFFFF;strokeColor=#000000;fontSize=13;whiteSpace=wrap;align=left;spacingLeft=4;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;html=1;" plantUmlBaseValue="&lt;b&gt;Аналитика&lt;/b&gt;:&lt;br&gt;- нет единой канонической модели заказа;&lt;br&gt;-多个 источников: SQL, staging, API, batch, CSV;&lt;br&gt;- проблемы качества данных и lineage." id="1Lf__q6R_X952Ri9GaN6-506">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=note;size=10;fillColor=#FFFFFF;strokeColor=#000000;fontSize=13;whiteSpace=wrap;align=left;spacingLeft=4;shadow=0;strokeWidth=1;fontColor=#000000;fontFamily=Verdana;html=1;" vertex="1">
+            <mxGeometry height="272.1254355400697" width="327.82894736842104" x="1949.6052631578948" y="498.2578397212543" as="geometry" />
+          </mxCell>
+        </UserObject>
+        <UserObject label="" plantUmlId="noteptr_61" plantUmlBaseStyle="shape=triangle;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1;shadow=0;fontColor=#000000;fontFamily=Verdana;direction=south;" plantUmlBaseValue="" id="1Lf__q6R_X952Ri9GaN6-507">
+          <mxCell parent="1Lf__q6R_X952Ri9GaN6-445" style="shape=triangle;fillColor=#FFFFFF;strokeColor=#000000;strokeWidth=1;shadow=0;fontColor=#000000;fontFamily=Verdana;direction=south;" vertex="1">
+            <mxGeometry height="137.97909407665506" width="8.68421052631579" x="2109.1776315789475" y="766.5505226480836" as="geometry" />
+          </mxCell>
+        </UserObject>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
