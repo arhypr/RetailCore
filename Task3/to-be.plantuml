@@ -1,0 +1,207 @@
+@startuml
+!theme plain
+left to right direction
+
+skinparam packageStyle rectangle
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam wrapWidth 200
+skinparam maxMessageSize 200
+
+skinparam rectangle {
+  BorderColor #555555
+  BackgroundColor #FFFFFF
+}
+skinparam component {
+  BorderColor #555555
+  BackgroundColor #F8F8F8
+}
+skinparam database {
+  BorderColor #555555
+  BackgroundColor #FFF4CC
+}
+skinparam queue {
+  BorderColor #555555
+  BackgroundColor #EAF4FF
+}
+
+actor "Клиент" as Customer
+actor "Оператор\nподдержки" as Support
+actor "Бизнес-\nпользователи" as BusinessUsers
+
+cloud "Маркетплейсы" as Marketplaces
+cloud "Платёжные\nпровайдеры" as PaymentProviders
+cloud "Службы\nдоставки" as DeliveryPartners
+cloud "Внутренние\nBI / отчёты" as BI
+
+rectangle "RetailCore TO-BE (промежуточное состояние, 12–18 мес)" as RetailCore {
+
+  component "Интернет-магазин\nи мобильные каналы" as Channels
+
+  ' === ЯДРО: НЕ ТРОГАЕМ НА ПЕРВОМ ГОРИЗОНТЕ ===
+  package "Java-монолит\nCORE WRITE BOUNDARY — не трогаем" as JavaMonolith #FFE6E6 {
+    component "Checkout / Order API" as OrderApi
+    component "Order Processing" as Processing
+    component "Pricing & Promo Logic\n(фактический расчёт)" as Pricing
+    component "Status Management\n(write-path)" as Statuses
+    component "Payment Orchestration" as PaymentOrchestration
+    component "Delivery Routing\n(базовый выбор)" as DeliveryRouting
+    component "Outbox Publisher\n(канонические события)" as Outbox
+  }
+
+  ' === SEAMS: ИЗОЛЯЦИЯ ===
+  package "Seams (изоляция)" as Seams {
+    queue "Order Event Hub\nканонические события заказа" as EventHub
+    component "Integration Gateway\nединый фасад внешних вызовов" as IntGateway
+    component "Data Access Layer\n(anti-corruption вокруг Oracle)" as DAL
+  }
+
+  ' === НОВЫЕ/ВЫНЕСЕННЫЕ СЕРВИСЫ ===
+  package "Новые / вынесенные сервисы" as NewServices {
+    component "Post-Order Processing Service\n(по событиям)" as PostOrder
+    component "Pricing / Promo Read Service\n(чтение правил, справочный расчёт)" as PromoRead
+    component "Order Read Model\n(единая карточка заказа для поддержки)" as OrderRead
+    component "Analytics Offload\n(события + read-модель)" as AnalyticsOffload
+  }
+
+  ' === СОХРАНЯЕМ ===
+  database "Oracle\nоперационная БД + бизнес-логика + интеграционный слой\n(сохраняется, зависимость постепенно снижается)" as Oracle
+
+  package "Вспомогательные сервисы (сохраняются)" as AuxServices {
+    component ".NET integration service\n(постепенно переводится за Integration Gateway)" as DotNet
+    component "Python analytics jobs\n(постепенно переводится на события)" as PyAnalytics
+  }
+
+  component "Admin / Support tools\n(чтение через Order Read Model)" as AdminTools
+}
+
+' === ВНЕШНИЕ ПОТОКИ ===
+Customer --> Channels : оформление заказа,\nпросмотр статуса
+Channels --> OrderApi : create/update order
+
+Marketplaces --> IntGateway : заказы, обновления, статусы
+IntGateway --> OrderApi : входящие заказы
+
+OrderApi --> Pricing : расчёт цены и промо
+OrderApi --> Processing : создание и обработка заказа
+
+Processing --> PaymentOrchestration : инициировать оплату
+Processing --> DeliveryRouting : выбрать доставку
+
+PaymentOrchestration --> IntGateway : создание платёжной сессии
+DeliveryRouting --> IntGateway : резервирование доставки
+IntGateway --> PaymentProviders : внешние вызовы
+IntGateway --> DeliveryPartners : внешние вызовы
+
+' === НОВЫЕ ПОТОКИ: СОБЫТИЯ ===
+Processing --> Outbox : бизнес-события заказа
+Outbox --> EventHub : публикация канонических событий
+EventHub --> PostOrder : события для пост-обработки
+EventHub --> OrderRead : проекция read-модели
+EventHub --> AnalyticsOffload : аналитические события
+EventHub --> PromoRead : события для чтения правил
+
+' === ДОСТУП К ДАННЫМ ===
+Pricing --> DAL : правила, коэффициенты, legacy promo
+Processing --> DAL : заказ, резерв, служебные таблицы
+Statuses --> DAL : статусы, история
+PaymentOrchestration --> DAL : payment_session_id
+DeliveryRouting --> DAL : правила маршрутизации
+
+DAL --> Oracle : контролируемый доступ
+
+' === READ-МОДЕЛИ И ПОДДЕРЖКА ===
+OrderRead --> DAL : агрегация из Oracle
+Support --> OrderRead : единая карточка заказа
+Support --> AdminTools : ручные действия
+AdminTools --> OrderRead : чтение состояния
+AdminTools --> Statuses : ручная корректировка (сохраняется)
+
+' === АНАЛИТИКА ===
+AnalyticsOffload --> BI : аналитические данные
+BusinessUsers --> BI : управленческие отчёты
+AnalyticsOffload --> PyAnalytics : события и read-модель
+PyAnalytics --> DAL : ограниченный доступ к Oracle
+DotNet --> DAL : без прямого доступа к staging-таблицам
+
+' === ПОСТ-ОБРАБОТКА ===
+PostOrder --> IntGateway : follow-up вызовы
+PostOrder --> DAL : обновление состояния пост-обработки
+
+' === ЗАМЕЧАНИЯ ===
+note right of JavaMonolith
+  **CORE WRITE BOUNDARY — не трогаем:**
+  - Checkout и создание заказа
+  - Платёжная оркестрация
+  - Write-path статусов
+  - Фактический расчёт цены в checkout
+  - Базовый выбор маршрута доставки
+  Причина: критичный контур, высокая связность,
+  финансовые риски, нельзя останавливать бизнес.
+end note
+
+note right of EventHub
+  **Канонический поток событий:**
+  - OrderCreated, PromoApplied,
+    PaymentSessionCreated, PaymentConfirmed,
+    DeliveryReserved, StatusChanged, OrderCancelled
+  - Outbox-публикация из монолита
+  - Основа для read-моделей, аналитики,
+    наблюдаемости и пост-обработки
+end note
+
+note right of IntGateway
+  **Integration Gateway:**
+  - Единый фасад внешних вызовов
+  - Унификация контрактов и событий
+  - Идемпотентность и дедупликация
+  - Постепенный отказ от staging-таблиц
+  - Изоляция монолита от партнёров
+end note
+
+note right of OrderRead
+  **Order Read Model:**
+  - Единая карточка заказа для поддержки
+  - Текущее состояние + история + причины отклонений
+  - Read-only относительно write-path
+  - Снижает количество внутренних касаний
+end note
+
+note right of PromoRead
+  **Pricing / Promo Read:**
+  - Чтение правил и справочный расчёт
+  - Параллельный режим с монолитом
+  - Постепенное снижение зависимости
+    от legacy-промо в Oracle
+end note
+
+note right of AnalyticsOffload
+  **Analytics Offload:**
+  - Аналитика на событиях и read-модели
+  - Снимает нагрузку с операционной Oracle
+  - Каноническая модель заказа для аналитики
+  - Валидация эквивалентности данных
+end note
+
+note right of DAL
+  **Data Access Layer:**
+  - Anti-corruption вокруг Oracle
+  - Новые сервисы не зависят от схемы БД
+  - Готовит почву для постепенного отказа от Oracle
+end note
+
+note right of PostOrder
+  **Post-Order Processing:**
+  - Первый безопасный вынос из монолита
+  - Работает по событиям
+  - Не входит в критичный checkout write-path
+end note
+
+note right of Oracle
+  **Oracle сохраняется:**
+  - Операционная БД + бизнес-логика + staging
+  - Зависимость постепенно снижается
+  - Замена не входит в первый горизонт
+end note
+
+@enduml
